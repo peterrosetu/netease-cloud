@@ -2,7 +2,7 @@
 '''
 @author: ZainCheung
 @LastEditors: ZainCheung
-@description:网易云音乐全自动每日打卡300首歌升级账号等级,使用前请先到init.config文件配置
+@description:网易云音乐全自动每日打卡云函数版
 @Date: 2020-06-25 14:28:48
 @LastEditTime: 2020-06-26 17:38:18
 '''
@@ -16,8 +16,7 @@ import time
 import json
 import logging
 
-logFile = open("run.log", encoding="utf-8", mode="a")
-logging.basicConfig(stream=logFile, format="%(asctime)s %(name)s:%(levelname)s:%(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=logging.INFO)
+logger = logging.getLogger()
 grade = [10,40,70,130,200,400,1000,3000,8000,20000]
 api = ''
 
@@ -60,7 +59,7 @@ class Task(object):
             self.error = '登陆失败，请检查账号'
         self.cookies = response.cookies.get_dict()
         self.log('登陆成功')
-        logging.info("登陆成功")
+        logger.info("登陆成功")
 
     '''
     每日签到
@@ -71,10 +70,10 @@ class Task(object):
         data = json.loads(response.text)
         if data['code'] == 200:
             self.log('签到成功')
-            logging.info('签到成功')
+            logger.info('签到成功')
         else:
             self.log('重复签到')
-            logging.info('重复签到')
+            logger.info('重复签到')
 
     '''
     每日打卡300首歌
@@ -95,7 +94,7 @@ class Task(object):
         self.level = data['level']
         self.listenSongs = data['listenSongs']
         self.log('获取用户详情成功')
-        logging.info('获取用户详情成功')
+        logger.info('获取用户详情成功')
 
     '''
     Server推送
@@ -109,10 +108,10 @@ class Task(object):
         data = json.loads(response.text)
         if data['errno'] == 0:
             self.log('用户:' + self.name + '  Server酱推送成功')
-            logging.info('用户:' + self.name + '  Server酱推送成功')
+            logger.info('用户:' + self.name + '  Server酱推送成功')
         else:
             self.log('用户:' + self.name + '  Server酱推送失败,请检查sckey是否正确')
-            logging.info('用户:' + self.name + '  Server酱推送失败,请检查sckey是否正确')
+            logger.info('用户:' + self.name + '  Server酱推送失败,请检查sckey是否正确')
 
     '''
     自定义要推送到微信的内容
@@ -167,18 +166,18 @@ class Task(object):
             self.login()
             self.sign()
             self.detail()
-            for i in range(1,4):
+            for i in range(1,3):
                 self.daka()
                 self.log('用户:' + self.name + '  第' + str(i) + '次打卡成功,即将休眠30秒')
-                logging.info('用户:' + self.name + '  第' + str(i) + '次打卡成功,即将休眠30秒')
-                time.sleep(30)
+                logger.info('用户:' + self.name + '  第' + str(i) + '次打卡成功,即将休眠30秒')
+                time.sleep(10)
             self.server()
         except:
             self.log('用户任务执行中断,请检查账号密码是否正确')
-            logging.error('用户任务执行中断,请检查账号密码是否正确========================================')
+            logger.error('用户任务执行中断,请检查账号密码是否正确========================================')
         else:
             self.log('用户:' + self.name + '  今日任务已完成')
-            logging.info('用户:' + self.name + '  今日任务已完成========================================')
+            logger.info('用户:' + self.name + '  今日任务已完成========================================')
             
         
 '''
@@ -195,8 +194,7 @@ def init():
     md5Switch = config.getboolean('setting','md5Switch')
     peopleSwitch = config.getboolean('setting','peopleSwitch')
     sckey = config['setting']['sckey']
-    print('配置文件读取完毕')
-    logging.info('配置文件读取完毕')
+    logger.info('配置文件读取完毕')
     conf = {
             'uin': uin,
             'pwd': pwd,
@@ -233,11 +231,9 @@ def check():
     url = api + '?do=check'
     respones = requests.get(url)
     if respones.status_code == 200:
-        print('api测试正常')
-        logging.info('api测试正常')
+        logger.info('api测试正常')
     else:
-        print('api测试异常')
-        logging.error('api测试异常')
+        logger.error('api测试异常')
 
 '''
 任务池
@@ -247,23 +243,18 @@ def taskPool():
     config = init()
     check() # 每天对api做一次检查
     if config['peopleSwitch'] is True:
-        print('多人开关已打开,即将开始执行多人任务')
-        logging.info('多人开关已打开,即将执行进行多人任务')
+        logger.info('多人开关已打开,即将执行进行多人任务')
         account = loadJson("account.json")
         for man in account:
-            print('账号: ' + man['account'] + '  开始执行')
-            logging.info('账号: ' + man['account'] + '  开始执行========================================')
+            logger.info('账号: ' + man['account'] + '  开始执行========================================')
             task = Task(man['account'], man['password'], man['sckey'])
             task.start()
             time.sleep(10)
-        print('所有账号已全部完成任务,服务进入休眠中,等待明天重新启动')
-        logging.info('所有账号已全部完成任务,服务进入休眠中,等待明天重新启动')
+        logger.info('所有账号已全部完成任务,服务进入休眠中,等待明天重新启动')
     else :
-        print('账号: ' + config['uin'] + '  开始执行')
-        logging.info('账号: ' + config['uin'] + '  开始执行========================================')
+        logger.info('账号: ' + config['uin'] + '  开始执行========================================')
         if config['md5Switch'] is True:
-            print('MD5开关已打开,即将开始为你加密,密码不会上传至服务器,请知悉')
-            logging.info('MD5开关已打开,即将开始为你加密,密码不会上传至服务器,请知悉')
+            logger.info('MD5开关已打开,即将开始为你加密,密码不会上传至服务器,请知悉')
             config['pwd'] = md5(config['pwd'])
         task = Task(config['uin'], config['pwd'], config['sckey'])
         task.start()
@@ -271,7 +262,5 @@ def taskPool():
 '''
 程序的入口
 '''
-if __name__ == '__main__':
-    while True:
-        Timer(0, taskPool, ()).start()
-        time.sleep(60*60*24) # 间隔一天
+def main(event,content):
+    taskPool()
